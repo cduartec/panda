@@ -26,9 +26,15 @@ include $(FRAMEWORK_DIR)/moose.mk
 
 ALL_MODULES         := no
 
+<<<<<<< HEAD
 CHEMICAL_REACTIONS  := no
 CONTACT             := yes
 FLUID_PROPERTIES    := no
+=======
+CHEMICAL_REACTIONS  := yes
+CONTACT             := yes
+FLUID_PROPERTIES    := yes
+>>>>>>> master
 HEAT_CONDUCTION     := yes
 MISC                := no
 NAVIER_STOKES       := no
