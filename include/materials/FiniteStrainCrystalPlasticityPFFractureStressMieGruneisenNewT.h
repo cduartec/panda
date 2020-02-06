@@ -4,8 +4,8 @@
 /*          All contents are licensed under LGPL V2.1           */
 /*             See LICENSE for full restrictions                */
 /****************************************************************/
-#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
-#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
+#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENNEWT_H
+#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENNEWT_H
 
 #include "FiniteStrainCrystalPlasticity.h"
 
@@ -21,19 +21,38 @@
  * Computes the stress and free energy derivatives for the phase field
  * Allen-Cahn formalism
  */
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen;
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewT;
 
 template<>
-InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen>();
+InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewT>();
 
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen : public FiniteStrainCrystalPlasticity
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewT : public FiniteStrainCrystalPlasticity
 {
 public:
-  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen(const InputParameters & parameters);
+  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewT(const InputParameters & parameters);
 
 protected:
   /// Function required to initialize statefull material properties
   virtual void initQpStatefulProperties();
+
+  /**
+   * This function set the initial slip resistance
+   */
+  virtual void getInitSlipSysRes();
+
+  /**
+   * This function sets the flow parameters
+   */
+  virtual void getFlowRateParams();
+
+  /**
+   * This function sets the hardness parameters
+   */
+  virtual void getHardnessParams();
+
+  virtual void preSolveQp();
+
+  virtual void solveQp();
   /**
    * This function set variables for internal variable solve.
    */
@@ -49,6 +68,7 @@ protected:
    */
   virtual void postSolveStatevar();
 
+  virtual void update_slip_system_resistance();
 
   // update slip system resistances and output slip increment
   virtual void updateGss();
@@ -70,6 +90,9 @@ protected:
 
   // temperature
   const VariableValue & _temp;
+
+  // Maximum element size
+  const VariableValue & _h_max;
 
   /// Small number to avoid non-positive definiteness at or near complete damage
   const Real _kdamage;
@@ -100,6 +123,15 @@ protected:
 
   // reference temperature, as in Luscher2017
   const Real _reference_temperature;
+
+  // Melting temperature
+  const Real _temp_melt;
+ 
+  // Initial temperature softening
+  const Real _temp_init;
+
+  // Thermal softening exponent
+  const Real _q;
 
   // prefactor of the plastic contribution to damage
   const Real _plastic_factor;
@@ -142,14 +174,29 @@ protected:
 
   MaterialProperty<RankTwoTensor> & _pk2_undamaged;
   MaterialProperty<RankTwoTensor> & _fe_out; // Elastic deformation gradient for output
+  MaterialProperty<RankTwoTensor> & _sigma_eos; // Elastic deformation gradient for output
+  MaterialProperty<RankTwoTensor> & _sigma_dev; // Elastic deformation gradient for output
   MaterialProperty<std::vector<Real>> & _slip_incr_out; // slip increment output
+  MaterialProperty<Real> & _degradation;
   MaterialProperty<std::vector<Real>> & _tau_out; // slip increment output
+  MaterialProperty<std::vector<Real>> & _gss_thermal; // slip increment output
+  
+  /// Pressure  variable.
+  const VariableValue & _p;
+  VariableName _p_name;
+
+  /// Variation of elasticity tensor  with pressure
+  const MaterialProperty<RankFourTensor> & _delasticity_tensor_dp;
+  MaterialProperty<Real> &  _p_ev;
+  /// Rotation matrix
+  MaterialProperty<RankTwoTensor> & _rot;
 
   Real _W0p_tmp;
   Real _W0p_tmp_old;
   Real _W0p_broken_tmp;
   Real _W0p_broken_tmp_old;
 
+
 };
 
-#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
+#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENNEWT_H

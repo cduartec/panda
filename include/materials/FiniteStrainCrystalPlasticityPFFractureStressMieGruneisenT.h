@@ -4,13 +4,13 @@
 /*          All contents are licensed under LGPL V2.1           */
 /*             See LICENSE for full restrictions                */
 /****************************************************************/
-#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
-#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
+#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENT_H
+#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENT_H
 
 #include "FiniteStrainCrystalPlasticity.h"
 
 /**
- * FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen uses the multiplicative decomposition of deformation gradient
+ * FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenT uses the multiplicative decomposition of deformation gradient
  * and solves the PK2 stress residual equation at the intermediate configuration to evolve the material state.
  * The internal variables are updated using an interative predictor-corrector algorithm.
  * Backward Euler integration rule is used for the rate equations.
@@ -20,16 +20,17 @@
  * finite strain formalism as in Luscher2017
  * Computes the stress and free energy derivatives for the phase field
  * Allen-Cahn formalism
+ * Includes thermal softening as in Johnson's Cook model
  */
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen;
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenT;
 
 template<>
-InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen>();
+InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenT>();
 
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen : public FiniteStrainCrystalPlasticity
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenT : public FiniteStrainCrystalPlasticity
 {
 public:
-  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen(const InputParameters & parameters);
+  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenT(const InputParameters & parameters);
 
 protected:
   /// Function required to initialize statefull material properties
@@ -37,8 +38,11 @@ protected:
   /**
    * This function set variables for internal variable solve.
    */
+
+  virtual void getInitSlipSysRes();
   virtual void preSolveStatevar();
 
+  virtual void getHardnessParams();
   /**
    * This function solves internal variables.
    */
@@ -71,6 +75,9 @@ protected:
   // temperature
   const VariableValue & _temp;
 
+  // Maximum element size
+  const VariableValue & _h_max;
+
   /// Small number to avoid non-positive definiteness at or near complete damage
   const Real _kdamage;
 
@@ -100,6 +107,12 @@ protected:
 
   // reference temperature, as in Luscher2017
   const Real _reference_temperature;
+
+  // Melting temperature
+  const Real _temp_melt;
+  
+  // Thermal softening exponent
+  const Real _q;
 
   // prefactor of the plastic contribution to damage
   const Real _plastic_factor;
@@ -143,13 +156,16 @@ protected:
   MaterialProperty<RankTwoTensor> & _pk2_undamaged;
   MaterialProperty<RankTwoTensor> & _fe_out; // Elastic deformation gradient for output
   MaterialProperty<std::vector<Real>> & _slip_incr_out; // slip increment output
-  MaterialProperty<std::vector<Real>> & _tau_out; // slip increment output
 
   Real _W0p_tmp;
   Real _W0p_tmp_old;
   Real _W0p_broken_tmp;
   Real _W0p_broken_tmp_old;
 
+  MaterialProperty<Real> & _degradation;
+  MaterialProperty<std::vector<Real>> & _tau_out; // slip increment output
+  MaterialProperty<std::vector<Real>> & _gss_thermal; // slip increment output
+  MaterialProperty<std::vector<Real>> & _gss_thermal_init; //initial slip increment output
 };
 
-#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
+#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENT_H

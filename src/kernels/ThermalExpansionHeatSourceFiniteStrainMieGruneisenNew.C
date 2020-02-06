@@ -1,10 +1,10 @@
-#include "ThermalExpansionHeatSourceFiniteStrainMieGruneisen.h"
+#include "ThermalExpansionHeatSourceFiniteStrainMieGruneisenNew.h"
 
-registerMooseObject("pandaApp",ThermalExpansionHeatSourceFiniteStrainMieGruneisen);
+registerMooseObject("pandaApp",ThermalExpansionHeatSourceFiniteStrainMieGruneisenNew);
 
 template <>
 InputParameters
-validParams<ThermalExpansionHeatSourceFiniteStrainMieGruneisen>()
+validParams<ThermalExpansionHeatSourceFiniteStrainMieGruneisenNew>()
 {
   InputParameters params = validParams<HeatSource>();
   params.addClassDescription("Thermal expansion heat source kernel"
@@ -22,12 +22,13 @@ validParams<ThermalExpansionHeatSourceFiniteStrainMieGruneisen>()
   params.addParam<MaterialPropertyName>(
       "density_name", "density", "Property name of the density material property");
   params.addCoupledVar("c","Phase field damage variable: Used to indicate calculation of Off Diagonal Jacobian term");
+  params.addRequiredCoupledVar("h_max","Maximum element size");
   params.addRequiredParam<Real>("C0", "Von Neuman coefficient");
   params.addRequiredParam<Real>("C1", "Landshoff coefficient");
   return params;
 }
 
-ThermalExpansionHeatSourceFiniteStrainMieGruneisen::ThermalExpansionHeatSourceFiniteStrainMieGruneisen(const InputParameters & parameters)
+ThermalExpansionHeatSourceFiniteStrainMieGruneisenNew::ThermalExpansionHeatSourceFiniteStrainMieGruneisenNew(const InputParameters & parameters)
   : HeatSource(parameters),
     _base_name(isParamValid("base_name") ? getParam<std::string>("base_name") + "_" : ""),
     _kdamage(getParam<Real>("kdamage")),
@@ -43,6 +44,7 @@ ThermalExpansionHeatSourceFiniteStrainMieGruneisen::ThermalExpansionHeatSourceFi
     _fp_old(getMaterialPropertyOldByName<RankTwoTensor>(_base_name + "fp")), // Plastic deformation gradient, previous timestep
     _elasticity_tensor(getMaterialPropertyByName<RankFourTensor>(_base_name + "elasticity_tensor")), //elasticity tensor
     _c(coupledValue("c")),
+    _h_max(coupledValue("h_max")),
     _c_coupled(isCoupled("c")),
     _c_var(_c_coupled ? coupled("c") : 0),
     _ndisp(coupledComponents("displacements")),
@@ -55,13 +57,14 @@ ThermalExpansionHeatSourceFiniteStrainMieGruneisen::ThermalExpansionHeatSourceFi
 }
 
 Real
-ThermalExpansionHeatSourceFiniteStrainMieGruneisen::computeQpResidual()
+ThermalExpansionHeatSourceFiniteStrainMieGruneisenNew::computeQpResidual()
 {
   Real heat_source, Je;
   Real Kb = _Bulk_Modulus_Ref;
   Real thermal_expansion_coeff; // thermal expansion coefficient depends on Gruneisen parameter, bulk modulus and sound speed
   RankTwoTensor ce, ce_old, invce, iden, ee, ee_old, ee_rate, invce_ee_rate;
   RankTwoTensor fe, fe_old, inv_fp, inv_fp_old;
+  Real h_max = _h_max[_qp];
 
   // calculate elastic deformation gradient
   inv_fp = _fp[_qp].inverse();
@@ -101,8 +104,8 @@ ThermalExpansionHeatSourceFiniteStrainMieGruneisen::computeQpResidual()
   // Real trD;
   trD = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
   trD /= _deformation_gradient_old[_qp].det();
-  viscous_energy  = _C0 * trD * std::abs(trD) * _density[_qp] ;
-  viscous_energy += _C1 * trD * _density[_qp];
+  viscous_energy  = _C0 * trD * std::abs(trD) * _density[_qp] * h_max * h_max ;
+  viscous_energy += _C1 * trD * _density[_qp] *  h_max;
   viscous_energy *= invce_ee_rate.trace();
   heat_source += abs(viscous_energy); 
 
@@ -127,7 +130,7 @@ ThermalExpansionHeatSourceFiniteStrainMieGruneisen::computeQpResidual()
 }
 
 Real
-ThermalExpansionHeatSourceFiniteStrainMieGruneisen::computeQpJacobian()
+ThermalExpansionHeatSourceFiniteStrainMieGruneisenNew::computeQpJacobian()
 {
   Real Kb = _Bulk_Modulus_Ref;
   RankTwoTensor ce, ce_old, iden, ee, ee_old, ee_rate;
@@ -153,7 +156,7 @@ ThermalExpansionHeatSourceFiniteStrainMieGruneisen::computeQpJacobian()
 }
 
 Real
-ThermalExpansionHeatSourceFiniteStrainMieGruneisen::computeQpOffDiagJacobian(unsigned int jvar)
+ThermalExpansionHeatSourceFiniteStrainMieGruneisenNew::computeQpOffDiagJacobian(unsigned int jvar)
 {
   Real val;
   Real Kb = _Bulk_Modulus_Ref;

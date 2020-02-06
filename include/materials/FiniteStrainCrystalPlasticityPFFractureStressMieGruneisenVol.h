@@ -4,8 +4,8 @@
 /*          All contents are licensed under LGPL V2.1           */
 /*             See LICENSE for full restrictions                */
 /****************************************************************/
-#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
-#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
+#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENVOL_H
+#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENVOL_H
 
 #include "FiniteStrainCrystalPlasticity.h"
 
@@ -21,15 +21,15 @@
  * Computes the stress and free energy derivatives for the phase field
  * Allen-Cahn formalism
  */
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen;
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol;
 
 template<>
-InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen>();
+InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol>();
 
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen : public FiniteStrainCrystalPlasticity
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol : public FiniteStrainCrystalPlasticity
 {
 public:
-  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen(const InputParameters & parameters);
+  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol(const InputParameters & parameters);
 
 protected:
   /// Function required to initialize statefull material properties
@@ -143,7 +143,6 @@ protected:
   MaterialProperty<RankTwoTensor> & _pk2_undamaged;
   MaterialProperty<RankTwoTensor> & _fe_out; // Elastic deformation gradient for output
   MaterialProperty<std::vector<Real>> & _slip_incr_out; // slip increment output
-  MaterialProperty<std::vector<Real>> & _tau_out; // slip increment output
 
   Real _W0p_tmp;
   Real _W0p_tmp_old;
@@ -152,4 +151,4 @@ protected:
 
 };
 
-#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
+#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENVOL_H
