@@ -28,11 +28,10 @@ public:
 protected:
   virtual void computeQpProperties();
   
-  const VariableValue & _gc;
-
   const Real _prop_value;
+  const Real _prop_variation;
 
-  MaterialProperty<Real> & _gc_prop;
+  MaterialProperty<Real> & _normal_prop;
 
 };
 

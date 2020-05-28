@@ -285,11 +285,15 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewT::preSolveQp()
   _degradation[_qp] = 1.0;
   if ( current_temp <= _temp_melt & current_temp >= _temp_init)
   {
-    _degradation[_qp] = 1.0 - std::pow( (current_temp  - _temp_init) / (_temp_melt - _temp_init), _q);
+    _degradation[_qp] = 1.0 - 0.8*std::pow( (current_temp  - _temp_init) / (_temp_melt - _temp_init), _q);
   }
   else if ( current_temp  > _temp_melt)
   {
     _degradation[_qp] = 0.2;
+  }
+  else if ( current_temp  <  _temp_init)
+  {
+    _degradation[_qp] = 1.0;
   }
 
 }

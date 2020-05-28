@@ -4,8 +4,8 @@
 /*          All contents are licensed under LGPL V2.1           */
 /*             See LICENSE for full restrictions                */
 /****************************************************************/
-#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
-#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
+#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENNEWINITDAM_H
+#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENNEWINITDAM_H
 
 #include "FiniteStrainCrystalPlasticity.h"
 
@@ -21,15 +21,15 @@
  * Computes the stress and free energy derivatives for the phase field
  * Allen-Cahn formalism
  */
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen;
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam;
 
 template<>
-InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen>();
+InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam>();
 
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen : public FiniteStrainCrystalPlasticity
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam : public FiniteStrainCrystalPlasticity
 {
 public:
-  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen(const InputParameters & parameters);
+  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam(const InputParameters & parameters);
 
 protected:
   /// Function required to initialize statefull material properties
@@ -116,6 +116,7 @@ protected:
   /// Material property defining gc parameter, declared elsewhere
   const MaterialProperty<Real> & _gc;
 
+
   /// Total energy and derivatives, declared in this material
   MaterialProperty<Real> & _F;
   MaterialProperty<Real> & _dFdc;
@@ -167,4 +168,4 @@ protected:
 
 };
 
-#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
+#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENNEWINITDAM_H

@@ -4,15 +4,16 @@
 /*          All contents are licensed under LGPL V2.1           */
 /*             See LICENSE for full restrictions                */
 /****************************************************************/
-#include "FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen.h"
+#include "FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam.h"
 #include "petscblaslapack.h"
 #include "libmesh/utility.h"
 #include "MathUtils.h"
+#include "MooseRandom.h"
 
-registerMooseObject("pandaApp", FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen);
+registerMooseObject("pandaApp", FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam);
 
 template<>
-InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen>()
+InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam>()
 {
   InputParameters params = validParams<FiniteStrainCrystalPlasticity>();
   params.addClassDescription("Crystal Plasticity class. Damage. Amor 2009."
@@ -47,7 +48,7 @@ InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGrun
   return params;
 }
 
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen(const InputParameters & parameters) :
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam::FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam(const InputParameters & parameters) :
     FiniteStrainCrystalPlasticity(parameters),
     _c(coupledValue("c")),
     _temp(coupledValue("temp")),
@@ -98,7 +99,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::FiniteStrainCrystalPl
 }
 
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::initQpStatefulProperties()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam::initQpStatefulProperties()
 {
   _stress[_qp].zero();
 
@@ -113,20 +114,20 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::initQpStatefulPropert
   _update_rot[_qp].addIa(1.0);
 
   _hist[_qp] = 0.0; // history variable = (never decreasing) positive elastic energy
-  if (_q_point[_qp](0) <= 0.5)
-  {
-   if(std::abs(_q_point[_qp](1)-0.5) < (0.5*_l[_qp]))
-   {
-     _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](1)-0.5)/(0.5*_l[_qp]));
-   }
-  }
+ // if (_q_point[_qp](1) >= 450.0 and _q_point[_qp](1)<= 500.0)
+ // {
+ //  if(std::abs(_q_point[_qp](0)-250.0) < (0.5*_l[_qp]))
+ //  {
+ //    _hist[_qp] = 1.0e10*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-250.0)/(0.5*_l[_qp]));
+ // }
+ // }
   
   initSlipSysProps(); // Initializes slip system related properties
   initAdditionalProps();
 }
 
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::preSolveStatevar()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam::preSolveStatevar()
 {
   if (_max_substep_iter == 1)//No substepping
   {
@@ -154,7 +155,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::preSolveStatevar()
 }
 
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::solveStatevar()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam::solveStatevar()
 {
   Real gmax, gdiff;
   unsigned int iterg;
@@ -192,14 +193,14 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::solveStatevar()
   if (iterg == _maxiterg)
   {
 #ifdef DEBUG
-    mooseWarning("FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen: Hardness Integration error gmax", gmax, "\n");
+    mooseWarning("FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNew: Hardness Integration error gmax", gmax, "\n");
 #endif
     _err_tol = true;
   }
 }
 
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::postSolveStatevar()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam::postSolveStatevar()
 {
   if (_max_substep_iter == 1)//No substepping
   {
@@ -233,7 +234,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::postSolveStatevar()
  * output slip increment
  */
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::updateGss()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam::updateGss()
 {
   DenseVector<Real> hb(_nss);
   Real qab;
@@ -284,7 +285,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::updateGss()
 
 // Update slip system resistance, elastic, plastic and total work
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::update_energies()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam::update_energies()
 {
   RankTwoTensor cauchy_stress_undamaged, cauchy_stress, WpToTrace, WpBrokenToTrace, invFe;
   Real detFe;
@@ -341,7 +342,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::update_energies()
 }
 
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::calcResidual( RankTwoTensor &resid )
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam::calcResidual( RankTwoTensor &resid )
 {
   RankTwoTensor iden, ce, invce, ee, ce_pk2, eqv_slip_incr, pk2_new, temporal;
   Real trD, Kb, Je, J_dot, detFe;
@@ -558,7 +559,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::calcResidual( RankTwo
 
 // Calculate slip increment,dslipdtau. Override to modify.
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::getSlipIncrements()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenNewInitDam::getSlipIncrements()
 {
  // Real Je;
  // Je = _deformation_gradient[_qp].det();

@@ -4,8 +4,8 @@
 /*          All contents are licensed under LGPL V2.1           */
 /*             See LICENSE for full restrictions                */
 /****************************************************************/
-#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
-#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
+#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENRANDOM_H
+#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENRANDOM_H
 
 #include "FiniteStrainCrystalPlasticity.h"
 
@@ -21,19 +21,22 @@
  * Computes the stress and free energy derivatives for the phase field
  * Allen-Cahn formalism
  */
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen;
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenRandom;
 
 template<>
-InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen>();
+InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenRandom>();
 
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen : public FiniteStrainCrystalPlasticity
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenRandom : public FiniteStrainCrystalPlasticity
 {
 public:
-  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen(const InputParameters & parameters);
+  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenRandom(const InputParameters & parameters);
 
 protected:
   /// Function required to initialize statefull material properties
   virtual void initQpStatefulProperties();
+  virtual void initSlipSysProps();
+  virtual void assignSlipSysRes();
+  virtual void getInitSlipSysRes();
   /**
    * This function set variables for internal variable solve.
    */
@@ -167,4 +170,4 @@ protected:
 
 };
 
-#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_H
+#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENRANDOM_H
