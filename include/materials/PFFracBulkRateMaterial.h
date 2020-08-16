@@ -41,7 +41,7 @@ protected:
   ///Material property where the gc values are stored
   MaterialProperty<Real> &_gc_prop;
   ///Function to specify varying gc
-  Function * _function_prop;
+  const Function * _function_prop;
 
 private:
 
