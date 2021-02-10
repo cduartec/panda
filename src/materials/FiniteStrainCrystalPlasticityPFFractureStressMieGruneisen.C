@@ -113,13 +113,13 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::initQpStatefulPropert
   _update_rot[_qp].addIa(1.0);
 
   _hist[_qp] = 0.0; // history variable = (never decreasing) positive elastic energy
-  if (_q_point[_qp](0) <= 0.5)
-  {
-   if(std::abs(_q_point[_qp](1)-0.5) < (0.5*_l[_qp]))
-   {
-     _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](1)-0.5)/(0.5*_l[_qp]));
-   }
-  }
+//  if (_q_point[_qp](0) <= 0.5)
+//  {
+//   if(std::abs(_q_point[_qp](1)-0.5) < (0.5*_l[_qp]))
+//   {
+//     _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](1)-0.5)/(0.5*_l[_qp]));
+//   }
+//  }
   
   initSlipSysProps(); // Initializes slip system related properties
   initAdditionalProps();
@@ -444,7 +444,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::calcResidual( RankTwo
      pk2_new +=  1.0 * xfac * Kb * std::pow(Je , 2.0/3.0)
                 * (delta  -  thermal_eigenstrain.trace())
                 * invce;
-     _pk2_undamaged[_qp] += 1.0 * xfac * Kb * std::pow(Je , 2.0/3.0)
+     _pk2_undamaged[_qp] += 1.0 * Kb * std::pow(Je , 2.0/3.0)
                             * (delta  -  thermal_eigenstrain.trace())
                             * invce;
   } else { 
@@ -473,22 +473,25 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::calcResidual( RankTwo
                           * (delta  - thermal_eigenstrain.trace())
                           * invce;
 
-  _sigma_dev[_qp] = -1.0/3.0 * temporal.trace() * iden + _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
+  _sigma_dev[_qp] = _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
+  _sigma_dev[_qp]  +=  -1.0 * xfac * Kb * std::pow(Je , 2.0/3.0)
+              * (delta  -  thermal_eigenstrain.trace())
+              * invce;
   _sigma_dev[_qp] = _fe * _sigma_dev[_qp] * _fe.transpose()/detFe; 
 
-  // volumetric free energy = Psi_EOS in Luscher2017
-  // still to implement for Mie Gruneisen
   _W0e_pos[_qp] = 0.0;
   _W0e_neg[_qp] = 0.0;
-  if (Je >= 1.0) { // only in expansion
+
+  // Volumetric free energy = Psi_EOS in Luscher2017
+
+  // In expansion use Hooke's law
+
+  if (Je >= 1.0) { 
     _W0e_pos[_qp] = 1.0/2.0 * Kb * delta * delta - Kb * delta * thermal_expansion_coeff;
-                  //1.0*(_G_Gruneisen * _density[_qp] * _specific_heat[_qp] * (_reference_temperature-temp) * std::log(1/V0V)
-                  //+ (Kb*V0V*(2*_s_UsUp-2-_G_Gruneisen))/(2*(_s_UsUp-1)*std::pow(_s_UsUp, 2.0)*(V0V+_s_UsUp*(1-V0V)))
-                  //- ((2*_s_UsUp-2-_G_Gruneisen)*Kb)/(2*(_s_UsUp-1)*std::pow(_s_UsUp, 2.0))
-                  //+ (_G_Gruneisen*(1-2*_s_UsUp)+2*std::pow((_s_UsUp-1), 2.0))/(2*std::pow(_s_UsUp, 2.0)*std::pow((_s_UsUp-1), 2.0))
-                  //* std::log((V0V+_s_UsUp*(1-V0V))/(V0V))*Kb
-                  //+ (Kb*_G_Gruneisen)/(2*std::pow((_s_UsUp-1), 2.0))*std::log(1/V0V));
-  } else {// conpression
+  } else {
+
+  // In compression use EOS
+
     _W0e_neg[_qp] = 1.0*(_G_Gruneisen * _density[_qp] * _specific_heat[_qp] * (_reference_temperature-temp) * std::log(1/V0V)
                   + (Kb*V0V*(2*_s_UsUp-2-_G_Gruneisen))/(2*(_s_UsUp-1)*std::pow(_s_UsUp, 2.0)*(V0V+_s_UsUp*(1-V0V)))
                   - ((2*_s_UsUp-2-_G_Gruneisen)*Kb)/(2*(_s_UsUp-1)*std::pow(_s_UsUp, 2.0))
@@ -497,11 +500,13 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::calcResidual( RankTwo
                   + (Kb*_G_Gruneisen)/(2*std::pow((_s_UsUp-1), 2.0))*std::log(1/V0V));
   }
 
-  // volumetric coupling free energy = Psi_cpl in Luscher2017
+  // Volumetric-Deviatoric  coupling free energy = Psi_cpl in Luscher2017
+  
   RankTwoTensor elastic_energy_tensor, thermal_coupling_tensor;
 
   elastic_energy_tensor = _elasticity_tensor[_qp] * ee;
   elastic_energy_tensor = 0.5 * ee * elastic_energy_tensor;
+
   _W0e_pos[_qp] += elastic_energy_tensor.trace(); // 1/2 * Ee : C : Ee
 
   thermal_coupling_tensor = _elasticity_tensor[_qp] * thermal_eigenstrain; // C : alpha in equation 15 of Luscher2017

@@ -23,6 +23,7 @@ InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGrun
                              "fracture model.");
   params.addRequiredCoupledVar("c","Order parameter for damage");
   params.addRequiredCoupledVar("temp","Temperature");
+  params.addRequiredCoupledVar("h_max","Maximum element size");
   params.addParam<Real>("kdamage",1e-6,"Stiffness of damaged matrix");
   params.addParam<bool>(
       "use_current_history_variable", false, "Use the current value of the history variable.");
@@ -41,6 +42,8 @@ InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGrun
       "specific_heat", "specific_heat", "Property name of the specific heat material property");
   params.addParam<MaterialPropertyName>(
       "density_name", "density", "Property name of the density material property");
+  params.addRequiredCoupledVar("p", "Pressure");
+  params.addParam<MaterialPropertyName>("delasticity_tensor_dp", "Derivative of C_ijkl  with pressure");  
   return params;
 }
 
@@ -48,6 +51,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::FiniteStrainCrysta
     FiniteStrainCrystalPlasticity(parameters),
     _c(coupledValue("c")),
     _temp(coupledValue("temp")),
+    _h_max(coupledValue("h_max")),
     _kdamage(getParam<Real>("kdamage")),
     _use_current_hist(getParam<bool>("use_current_history_variable")),
     _G_Gruneisen(getParam<Real>("G_Gruneisen")),
@@ -80,10 +84,17 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::FiniteStrainCrysta
     _hist_old(getMaterialPropertyOld<Real>("hist")), // history variable = (never decreasing) positive elastic energy
     _pk2_undamaged(declareProperty<RankTwoTensor>("pk2_undamaged")), // undamaged 2nd Piola Kirchoff Stress
     _fe_out(declareProperty<RankTwoTensor>("fe_out")), // Elastic deformation gradient for output
-    _slip_incr_out(declareProperty<std::vector<Real>>("slip_incr_out")) // slip system strain increment for output
-    //_dW0p_dstrain(declareProperty<RankTwoTensor>("dW0p_dstrain")),
-    //_dW0p_broken_dstrain(declareProperty<RankTwoTensor>("dW0p_broken_dstrain")) // for the Jacobian calculation in the temperature kernel
+    _sigma_eos(declareProperty<RankTwoTensor>("sigma_eos")), // Cauchy stress eos
+    _sigma_dev(declareProperty<RankTwoTensor>("sigma_dev")), // Cauchy stress dev
+    _slip_incr_out(declareProperty<std::vector<Real>>("slip_incr_out")), // slip system strain increment for output
+    _tau_out(declareProperty<std::vector<Real>>("tau_out")), // slip system strain increment for output
+    _p(coupledValue("p")),
+    _p_name(getVar("p", 0)->name()),
+    _delasticity_tensor_dp(getMaterialPropertyDerivativeByName<RankFourTensor>("elasticity_tensor",  _p_name)),
+    _p_ev(declareProperty<Real>("p_ev")),
+    _rot(declareProperty<RankTwoTensor>("rot")) // Rotation tensor considering material rotation and crystal orientation
 {
+    _err_tol = false;
 }
 
 void
@@ -102,14 +113,14 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::initQpStatefulProp
   _update_rot[_qp].addIa(1.0);
 
   _hist[_qp] = 0.0; // history variable = (never decreasing) positive elastic energy
-  if (_q_point[_qp](0) <= 0.5)
-  {
-   if(std::abs(_q_point[_qp](1)-0.5) < (0.5*_l[_qp]))
-   {
-     _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](1)-0.5)/(0.5*_l[_qp]));
-     // _hist[_qp] = 1.0e4*(_gc[_qp]/(2.0*_l[_qp]))*(std::min(1.0*std::exp(-1.0*abs(_q_point[_qp](1)-1000)/_l[_qp]),1.0));
-   }
-  }
+//  if (_q_point[_qp](0) <= 0.5)
+//  {
+//   if(std::abs(_q_point[_qp](1)-0.5) < (0.5*_l[_qp]))
+//   {
+//     _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](1)-0.5)/(0.5*_l[_qp]));
+//   }
+//  }
+  
   initSlipSysProps(); // Initializes slip system related properties
   initAdditionalProps();
 }
@@ -181,7 +192,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::solveStatevar()
   if (iterg == _maxiterg)
   {
 #ifdef DEBUG
-    mooseWarning("FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol: Hardness Integration error gmax", gmax, "\n");
+    mooseWarning("FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen: Hardness Integration error gmax", gmax, "\n");
 #endif
     _err_tol = true;
   }
@@ -238,6 +249,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::updateGss()
   for (unsigned int i = 0; i < _nss; ++i)
     _slip_incr_out[_qp][i] = _slip_incr(i);
 
+
   // Real val = std::cosh(_h0 * _accslip_tmp / (_tau_sat - _tau_init)); // Karthik
   // val = _h0 * std::pow(1.0/val,2.0); // Kalidindi
 
@@ -278,6 +290,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::update_energies()
   Real detFe;
   Real c = _c[_qp];
 
+
   Real hist_variable = _hist_old[_qp]; // history variable = (never decreasing) positive elastic energy
   if (_use_current_hist)
     hist_variable = _hist[_qp];
@@ -308,7 +321,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::update_energies()
   _W0p_tmp += WpToTrace.trace();
 
   // Total free energy density (- sign in front of W0e_neg? W0e_neg is positive in compression)
-  _F[_qp] = (hist_variable + _plastic_factor * _W0p_tmp) * ((1.0 - c) * (1.0 - c) * (1 - _kdamage) + _kdamage) -
+  _F[_qp] = (hist_variable + _plastic_factor * _W0p_tmp) * ((1.0 - c) * (1.0 - c) * (1 - _kdamage) + _kdamage) +
             _W0e_neg[_qp] + _gc[_qp] / (2 * _l[_qp]) * c * c;
 
   // derivative of total free energy density wrt c
@@ -330,46 +343,49 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::update_energies()
 void
 FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::calcResidual( RankTwoTensor &resid )
 {
-  RankTwoTensor iden, ce, invce, ee, ce_pk2, eqv_slip_incr, pk2_new;
-  Real trD, Kb, Je;
+  RankTwoTensor iden, ce, invce, ee, ce_pk2, eqv_slip_incr, pk2_new, temporal;
+  Real trD, Kb, Je, J_dot, detFe;
   Real c = _c[_qp];
   Real temp = _temp[_qp];
+  Real h_max = _h_max[_qp]; //element size for artificial viscosity
   Real xfac = ((1.0 - c) * (1.0 - c) * (1 - _kdamage) + _kdamage);
-  Real thermal_expansion_coeff; // thermal expansion coefficient depends on Gruneisen parameter, bulk modulus and sound speed
-
-  // Anisotropic elasticity (Luscher2017)
+  Real thermal_expansion_coeff; 
+  Real Eev, dp_dEev, pk2_ev;
+  detFe = _fe.det();
+  
+  //Bulk modulus
   // Kb = K in Luscher2017
   // Kb = (1/9) I : C : I
   //Real Kb = 0.0;
 
-  //for (unsigned int i = 0; i < LIBMESH_DIM; ++i)
-  //  for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
-  //    Kb +=  _elasticity_tensor[_qp](i, i, j, j);
+  for (unsigned int i = 0; i < LIBMESH_DIM; ++i)
+    for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
+      Kb +=  _elasticity_tensor[_qp](i, i, j, j);
+  Kb = (1.0 / 9.0) * Kb;
 
-  //Kb = (1.0 / 9.0) * Kb;
-
-  // or reference bulk modulus can be an input
-  Kb = _Bulk_Modulus_Ref;
-
-  // thermal expansion coefficient depends on Gruneisen parameter, bulk modulus and sound speed
-  // condition: for small strain and temperature variation the second Piola-Kirchoff stress has to become:
-  // (Luscher 2017): C : (Ee - alpha)
-  // therefore the relationship holds:
-  // G_Gruneisen * rho_0 * C_v / K_0 = alpha_thermal
+  // Thermal expansion coefficient depends on Gruneisen parameter, bulk modulus and sound speed
   thermal_expansion_coeff = _G_Gruneisen * _density[_qp] * _specific_heat[_qp] / Kb;
 
   iden.zero();
+  temporal.zero();
   iden.addIa(1.0);
 
+  //Elastic part deformation gradient
   _fe = _dfgrd_tmp * _fp_prev_inv; // _fp_inv  ==> _fp_prev_inv
 
+  //Right cauchy strain tensor 
   ce = _fe.transpose() * _fe;
   ce_pk2 = ce * _pk2_tmp;
   ce_pk2 = ce_pk2 / _fe.det();
 
-  // Calculate Schmid tensor and resolved shear stresses
-  for (unsigned int i = 0; i < _nss; ++i)
+  //Calculate Schmid tensor and resolved shear stresses
+
+  _tau_out[_qp].resize(_nss);
+
+  for (unsigned int i = 0; i < _nss; ++i){
     _tau(i) = ce_pk2.doubleContraction(_s0[i]);
+    //Output ressolved shear stress
+    _tau_out[_qp][i] = _tau(i);}
 
   getSlipIncrements(); // Calculate dslip,dslipdtau
 
@@ -377,6 +393,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::calcResidual( Rank
     return;
 
   eqv_slip_incr.zero();
+
   for (unsigned int i = 0; i < _nss; ++i)
     eqv_slip_incr += _s0[i] * _slip_incr(i);
 
@@ -384,93 +401,122 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::calcResidual( Rank
   _fp_inv = _fp_old_inv * eqv_slip_incr;
   _fe = _dfgrd_tmp * _fp_inv;
   _fe_out[_qp] = _fe; // Elastic deformation gradient for output
+  
+  //Obtain rotation tensor  
+  _rot[_qp] = get_current_rotation(_deformation_gradient[_qp]);
 
   ce = _fe.transpose() * _fe;
   invce = ce.inverse();
   ee = 0.5 * ( ce - iden );
   Je = _fe.det(); // Jacobian = relative volume
-
+  
+  //EOS Mie Gruneisen (Menon, 2014), (Zhang, 2011)-----------------------------------------------------
   Real Peos, Peos_pos, Peos_neg, V0V, eta;
 
-  // Cauchy pressure, Mie Gruneisen (Menon, 2014), (Zhang, 2011)
   V0V = 1.0 / Je; // relative volume
   eta = 1.0 - Je; // eta = 1 - (v / v0) (Menon, 2014)
 
   Peos = _G_Gruneisen * _density[_qp] * _specific_heat[_qp] * (temp - _reference_temperature) * V0V;
   Peos += Kb * eta * (1.0 - (_G_Gruneisen / 2.0) * (V0V - 1.0)) / std::pow((1.0 - _s_UsUp * eta) , 2.0);
-  Peos = - Peos; // negative stress in compression
-
+  Peos = - Peos; // negative stress in compressio
   Peos_pos = (std::abs(Peos) + Peos) / 2.0; // volumetric expansion
   Peos_neg = (std::abs(Peos) - Peos) / 2.0; // volumetric compression
+  _sigma_eos[_qp] =  Peos * iden;
 
-  // positive and negative volumetric stresses (equation 17 in Luscher2017) + damage
-  pk2_new = Je * (Peos_pos * xfac - Peos_neg) * invce;
-
-  // Undamaged second piola-kirchoff stress to calculate undamaged plastic work
-  _pk2_undamaged[_qp] = Je * Peos * invce;
-
-  RankTwoTensor thermal_eigenstrain, thermal_eigenstrain_dev;
-  // thermal eigenstrain (equation (18) in Luscher2017)
+  // Thermal eigenstrain (equation (18) in Luscher2017-------------------------------------------------
   // Lagrangian strain E_thermal = 1/2 (F_thermal^T F_thermal - I)
   // finite strain formula (Lubarda2002): F_thermal = exp((alpha/3)*(T-T_ref)) I
+
+  RankTwoTensor thermal_eigenstrain, thermal_eigenstrain_dev;
   thermal_eigenstrain = (1.0 / 2.0)
                       * (std::exp((2.0/3.0) * thermal_expansion_coeff * (temp - _reference_temperature)) - 1.0)
                       * iden;
   thermal_eigenstrain_dev = thermal_eigenstrain- thermal_eigenstrain.trace()*iden;
 
-  // deviatoric stress is not damage (equation (18) in Luscher2017): C : (Ee - alpha)
-  pk2_new += _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
 
-  // Undamaged second piola-kirchoff stress to calculate undamaged plastic work
-  _pk2_undamaged[_qp] += _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
+  //Volumetric stress + damage-------------------------------------------------------------------------
 
   Real delta;
   // Pcor = correcting pressure = linearized form of the EOS
   // equation (18) in Luscher2017
   delta = 1.5 * (std::pow(Je , 2.0/3.0) - 1.0);
-  pk2_new -= Kb * std::pow(Je , 2.0/3.0)
-           * (delta * iden - 3.0 * thermal_eigenstrain)
-           * invce;
+  if (Je >= 1.0) { // only in expansion
+     pk2_new +=  1.0 * xfac * Kb * std::pow(Je , 2.0/3.0)
+                * (delta  -  thermal_eigenstrain.trace())
+                * invce;
+     _pk2_undamaged[_qp] += 1.0 * Kb * std::pow(Je , 2.0/3.0)
+                            * (delta  -  thermal_eigenstrain.trace())
+                            * invce;
+  } else { 
+  // Pcor = correcting pressure = linearized form of the EOS
+  // equation (18) in Luscher2017
+     pk2_new = Je * Peos * invce;
+     _pk2_undamaged[_qp] = Je * Peos * invce; 
+  }
+
+  // Deviatoric stress + damage (equation (18) in Luscher2017): C : (Ee - alpha)-----------------------
+  pk2_new +=  _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
 
   // Undamaged second piola-kirchoff stress to calculate undamaged plastic work
-  _pk2_undamaged[_qp] -= Kb * std::pow(Je , 2.0/3.0)
-                       * (delta * iden - 3.0 * thermal_eigenstrain)
-                       * invce;
+  _pk2_undamaged[_qp] += _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
 
-  // volumetric free energy = Psi_EOS in Luscher2017
-  // still to implement for Mie Gruneisen
+  //temporal  = _elasticity_tensor[_qp] * (ee - thermal_eigenstrain) ;
+
+  // Pcor = correcting pressure = linearized form of the EOS
+  // equation (18) in Luscher2017
+  pk2_new +=  -1.0 * Kb * std::pow(Je , 2.0/3.0)
+              * (delta  -  thermal_eigenstrain.trace())
+              * invce;
+
+  // Undamaged second piola-kirchoff stress to calculate undamaged plastic work
+  _pk2_undamaged[_qp] += -1.0 * Kb * std::pow(Je , 2.0/3.0)
+                          * (delta  - thermal_eigenstrain.trace())
+                          * invce;
+
+  _sigma_dev[_qp] = _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
+  _sigma_dev[_qp]  +=  -1.0  * Kb * std::pow(Je , 2.0/3.0)
+              * (delta  -  thermal_eigenstrain.trace())
+              * invce;
+  _sigma_dev[_qp] = _fe * _sigma_dev[_qp] * _fe.transpose()/detFe; 
+
   _W0e_pos[_qp] = 0.0;
   _W0e_neg[_qp] = 0.0;
-  if (Je > 1.0) { // only in expansion
-    _W0e_pos[_qp] = 1.0*(_G_Gruneisen * _density[_qp] * _specific_heat[_qp] * (_reference_temperature-temp) * std::log(1/V0V)
+
+  // Volumetric free energy = Psi_EOS in Luscher2017
+
+  // In expansion use Hooke's law
+
+  if (Je >= 1.0) { 
+    _W0e_pos[_qp] = 1.0/2.0 * Kb * delta * delta - Kb * delta * thermal_expansion_coeff;
+  } else {
+
+  // In compression use EOS
+
+    _W0e_neg[_qp] = 1.0*(_G_Gruneisen * _density[_qp] * _specific_heat[_qp] * (_reference_temperature-temp) * std::log(1/V0V)
                   + (Kb*V0V*(2*_s_UsUp-2-_G_Gruneisen))/(2*(_s_UsUp-1)*std::pow(_s_UsUp, 2.0)*(V0V+_s_UsUp*(1-V0V)))
                   - ((2*_s_UsUp-2-_G_Gruneisen)*Kb)/(2*(_s_UsUp-1)*std::pow(_s_UsUp, 2.0))
                   + (_G_Gruneisen*(1-2*_s_UsUp)+2*std::pow((_s_UsUp-1), 2.0))/(2*std::pow(_s_UsUp, 2.0)*std::pow((_s_UsUp-1), 2.0))
                   * std::log((V0V+_s_UsUp*(1-V0V))/(V0V))*Kb
                   + (Kb*_G_Gruneisen)/(2*std::pow((_s_UsUp-1), 2.0))*std::log(1/V0V));
-  } else { 
-     _W0e_pos[_qp] = 0.0;
   }
 
-  // volumetric coupling free energy = Psi_cpl in Luscher2017
-  // Only contributes to damage in expansion
-  if (Je > 1.0) { // only in expansion
-    RankTwoTensor elastic_energy_tensor, thermal_coupling_tensor;
+  // Volumetric-Deviatoric  coupling free energy = Psi_cpl in Luscher2017
+  
+  RankTwoTensor elastic_energy_tensor, thermal_coupling_tensor;
 
-    elastic_energy_tensor = _elasticity_tensor[_qp] * ee;
-    elastic_energy_tensor = 0.5 * ee * elastic_energy_tensor;
-    _W0e_pos[_qp] += elastic_energy_tensor.trace(); // 1/2 * Ee : C : Ee
+  elastic_energy_tensor = _elasticity_tensor[_qp] * ee;
+  elastic_energy_tensor = 0.5 * ee * elastic_energy_tensor;
 
-    thermal_coupling_tensor = _elasticity_tensor[_qp] * thermal_eigenstrain; // C : alpha in equation 15 of Luscher2017
-    thermal_coupling_tensor = ee * thermal_coupling_tensor;
-    _W0e_pos[_qp] -= thermal_coupling_tensor.trace(); // - Ee : C : alpha in equation 15 of Luscher2017
+  _W0e_neg[_qp] += elastic_energy_tensor.trace(); // 1/2 * Ee : C : Ee
 
-   _W0e_pos[_qp] -= 0.5 * Kb * delta * delta; // - 1/2 K delta^2 in equation 15 of Luscher2017
+  thermal_coupling_tensor = _elasticity_tensor[_qp] * thermal_eigenstrain; // C : alpha in equation 15 of Luscher2017
+  thermal_coupling_tensor = ee * thermal_coupling_tensor;
+  _W0e_neg[_qp] -= thermal_coupling_tensor.trace(); // - Ee : C : alpha in equation 15 of Luscher2017
 
-   _W0e_pos[_qp] += Kb * delta * thermal_eigenstrain.trace(); // + K delta alpha_v in equation 15 of Luscher2017
-  } else {
-    _W0e_pos[_qp] += 0;
-  }
+  _W0e_neg[_qp] -= 0.5 * Kb * delta * delta; // - 1/2 K delta^2 in equation 15 of Luscher2017
+
+  _W0e_neg[_qp] += Kb * delta * thermal_eigenstrain.trace(); // + K delta alpha_v in equation 15 of Luscher2017
+
   // Assign history variable and derivative
   if (_W0e_pos[_qp] > _hist_old[_qp])
     _hist[_qp] = _W0e_pos[_qp];
@@ -495,9 +541,22 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::calcResidual( Rank
   // Maheo et al. Mechanics Research Communications 38 (2011) 81 88
   trD = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
   trD /= _deformation_gradient_old[_qp].det();
+  J_dot = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt; 
 
-  pk2_new.addIa( _C0 * trD * std::abs(trD) );
-  pk2_new.addIa( _C1 * trD );
+  if (J_dot < 0.0){
+  pk2_new.addIa( _C0 * trD * h_max * h_max * std::abs(trD) * _density[_qp] );
+  pk2_new.addIa( _C1 * trD * h_max * _density[_qp]);
+  }
+  //Calculate stress term due to pressure dependence
+  //Volumetric strain
+  Eev = 1.0/V0V - 1.0;
+  //Derivative of the bulk pressure with respect to volumetric strain
+  dp_dEev = Kb * (1.0 - _s_UsUp * Eev )/ std::pow(1.0 + _s_UsUp * Eev, 3.0) *(_G_Gruneisen / 2.0 * Eev / (Eev + 1.0) - 1.0 );
+  dp_dEev += (_G_Gruneisen / 2.0 ) * Kb * Eev / std::pow(1.0 + _s_UsUp * Eev, 4.0); 
+  // S = 1/2 [Ee: dC/dp : (Ee - alpha(T-T0))] * dp/dEev * I
+  pk2_ev = 0.5 * ((_delasticity_tensor_dp[_qp]) * (ee - thermal_eigenstrain)).doubleContraction(ee);
+  _p_ev[_qp] = pk2_ev * dp_dEev;
+  //pk2_new.addIa(_p_ev[_qp]);
 
   resid = _pk2_tmp - pk2_new;
 }
@@ -506,29 +565,26 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::calcResidual( Rank
 void
 FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol::getSlipIncrements()
 {
+ // Real Je;
+ // Je = _deformation_gradient[_qp].det();
   for (unsigned int i = 0; i < _nss; ++i)
-  {
-    _slip_incr(i) = _a0(i) * std::pow(std::abs(_tau(i) / _gss_tmp[i]), 1.0 / _xm(i)) *
-                    copysign(1.0, _tau(i)) * _dt;
-    if (std::abs(_slip_incr(i)) > _slip_incr_tol * _dt)
-    {
-      _slip_incr(i) = _slip_incr_tol * _dt * copysign(1.0, _tau(i));
-      //_err_tol = true;
-#ifdef DEBUG
-      mooseWarning("Maximum allowable slip increment exceeded ", std::abs(_slip_incr(i)));
-#endif
-      return;
-    }
-  }
+  { 
+      //_slip_incr_tol  = 0.025 * (10.0 - std::pow(Je,3.0)/0.1125);
+      _slip_incr(i) = _a0(i) * std::pow(std::abs(_tau(i) / _gss_tmp[i]), 1.0 / _xm(i)) *
+                      copysign(1.0, _tau(i)) * _dt;
+      _dslipdtau(i) = _a0(i) / _xm(i) * copysign(1.0, _tau(i)) *
+                      std::pow(std::abs(_tau(i) / _gss_tmp[i]), 1.0 / _xm(i) - 1.0) / _gss_tmp[i] *
+                      _dt;
 
-  for (unsigned int i = 0; i < _nss; ++i)
-  {
-    _dslipdtau(i) = _a0(i) / _xm(i) *
-                    std::pow(std::abs(_tau(i) / _gss_tmp[i]), 1.0 / _xm(i) - 1.0) / _gss_tmp[i] *
-                    _dt;
-    if (std::abs(_slip_incr(i)) > _slip_incr_tol * _dt)
-    {
-      _dslipdtau(i) = 0.0;
-    }
+      if (std::abs(_slip_incr(i)) > _slip_incr_tol * _dt )
+      {
+        _slip_incr(i) = _slip_incr_tol * copysign(1.0, _tau(i))  * _dt ;
+        _dslipdtau(i) = 0.0;
+       //_err_tol = true;
+#ifdef DEBUG
+       mooseWarning("Maximum allowable slip increment exceeded ", std::abs(_slip_incr(i)));
+#endif 
+       //if ( i == (_nss - 1.0)) {
+       }
   }
 }

@@ -4,13 +4,13 @@
 /*          All contents are licensed under LGPL V2.1           */
 /*             See LICENSE for full restrictions                */
 /****************************************************************/
-#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENVOL_H
-#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENVOL_H
+#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_TEST_H
+#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_TEST_H
 
 #include "FiniteStrainCrystalPlasticity.h"
 
 /**
- * FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen uses the multiplicative decomposition of deformation gradient
+ * FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test uses the multiplicative decomposition of deformation gradient
  * and solves the PK2 stress residual equation at the intermediate configuration to evolve the material state.
  * The internal variables are updated using an interative predictor-corrector algorithm.
  * Backward Euler integration rule is used for the rate equations.
@@ -21,15 +21,15 @@
  * Computes the stress and free energy derivatives for the phase field
  * Allen-Cahn formalism
  */
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol;
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test;
 
 template<>
-InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol>();
+InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test>();
 
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol : public FiniteStrainCrystalPlasticity
+class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test : public FiniteStrainCrystalPlasticity
 {
 public:
-  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol(const InputParameters & parameters);
+  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test(const InputParameters & parameters);
 
 protected:
   /// Function required to initialize statefull material properties
@@ -147,6 +147,8 @@ protected:
   MaterialProperty<RankTwoTensor> & _fe_out; // Elastic deformation gradient for output
   MaterialProperty<RankTwoTensor> & _sigma_eos; // Elastic deformation gradient for output
   MaterialProperty<RankTwoTensor> & _sigma_dev; // Elastic deformation gradient for output
+  MaterialProperty<RankTwoTensor> & _sigma_dev2; // Elastic deformation gradient for output
+  MaterialProperty<RankTwoTensor> & _sigma_vis; // Elastic deformation gradient for output
   MaterialProperty<std::vector<Real>> & _slip_incr_out; // slip increment output
   MaterialProperty<std::vector<Real>> & _tau_out; // slip increment output
 
@@ -167,4 +169,4 @@ protected:
 
 };
 
-#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENVOL_H
+#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISEN_TEST_H
