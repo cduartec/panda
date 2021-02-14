@@ -4,15 +4,15 @@
 /*          All contents are licensed under LGPL V2.1           */
 /*             See LICENSE for full restrictions                */
 /****************************************************************/
-#include "FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test.h"
+#include "FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test.h"
 #include "petscblaslapack.h"
 #include "libmesh/utility.h"
 #include "MathUtils.h"
 
-registerMooseObject("pandaApp", FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test);
+registerMooseObject("pandaApp", FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test);
 
 template<>
-InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test>()
+InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test>()
 {
   InputParameters params = validParams<FiniteStrainCrystalPlasticity>();
   params.addClassDescription("Crystal Plasticity class. Damage. Amor 2009."
@@ -47,7 +47,7 @@ InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGrun
   return params;
 }
 
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test(const InputParameters & parameters) :
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test::FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test(const InputParameters & parameters) :
     FiniteStrainCrystalPlasticity(parameters),
     _c(coupledValue("c")),
     _temp(coupledValue("temp")),
@@ -86,8 +86,6 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::FiniteStrainCrys
     _fe_out(declareProperty<RankTwoTensor>("fe_out")), // Elastic deformation gradient for output
     _sigma_eos(declareProperty<RankTwoTensor>("sigma_eos")), // Cauchy stress eos
     _sigma_dev(declareProperty<RankTwoTensor>("sigma_dev")), // Cauchy stress dev
-    _sigma_dev2(declareProperty<RankTwoTensor>("sigma_dev2")), // Cauchy stress dev
-    _sigma_vis(declareProperty<RankTwoTensor>("sigma_vis")), // Cauchy stress dev
     _slip_incr_out(declareProperty<std::vector<Real>>("slip_incr_out")), // slip system strain increment for output
     _tau_out(declareProperty<std::vector<Real>>("tau_out")), // slip system strain increment for output
     _p(coupledValue("p")),
@@ -100,7 +98,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::FiniteStrainCrys
 }
 
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::initQpStatefulProperties()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test::initQpStatefulProperties()
 {
   _stress[_qp].zero();
 
@@ -115,20 +113,53 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::initQpStatefulPr
   _update_rot[_qp].addIa(1.0);
 
   _hist[_qp] = 0.0; // history variable = (never decreasing) positive elastic energy
-//  if (_q_point[_qp](0) <= 0.5)
-//  {
-//   if(std::abs(_q_point[_qp](1)-0.5) < (0.5*_l[_qp]))
-//   {
-//     _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](1)-0.5)/(0.5*_l[_qp]));
-//   }
-//  }
+  //Crack 1
+  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 936.)
+  {
+    if(std::abs(_q_point[_qp](0)-215.) < (0.5*_l[_qp]))
+    {
+       _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-215.)/(0.5*_l[_qp]));
+     }
+  }
+  //Crack 2
+  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 980.)
+  {
+    if(std::abs(_q_point[_qp](0)-55.) < (0.5*_l[_qp]))
+    {
+      _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-55.)/(0.5*_l[_qp]));
+    }
+  }
+  //Crack 3
+  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 908.)
+  {
+    if(std::abs(_q_point[_qp](0)-137.) < (0.5*_l[_qp]))
+    {
+      _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-137.)/(0.5*_l[_qp]));
+     }
+  }
+  //Crack 4
+  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 850.)
+  {
+    if(std::abs(_q_point[_qp](0)-370.) < (0.5*_l[_qp]))
+    {
+       _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-370.)/(0.5*_l[_qp]));
+     }
+  }
+  //Crack 5
+  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 970.)
+  {
+    if(std::abs(_q_point[_qp](0)-470.) < (0.5*_l[_qp]))
+    {
+       _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-470.)/(0.5*_l[_qp]));
+     }
+  }
   
   initSlipSysProps(); // Initializes slip system related properties
   initAdditionalProps();
 }
 
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::preSolveStatevar()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test::preSolveStatevar()
 {
   if (_max_substep_iter == 1)//No substepping
   {
@@ -156,7 +187,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::preSolveStatevar
 }
 
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::solveStatevar()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test::solveStatevar()
 {
   Real gmax, gdiff;
   unsigned int iterg;
@@ -194,14 +225,14 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::solveStatevar()
   if (iterg == _maxiterg)
   {
 #ifdef DEBUG
-    mooseWarning("FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test: Hardness Integration error gmax", gmax, "\n");
+    mooseWarning("FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen: Hardness Integration error gmax", gmax, "\n");
 #endif
     _err_tol = true;
   }
 }
 
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::postSolveStatevar()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test::postSolveStatevar()
 {
   if (_max_substep_iter == 1)//No substepping
   {
@@ -235,7 +266,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::postSolveStateva
  * output slip increment
  */
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::updateGss()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test::updateGss()
 {
   DenseVector<Real> hb(_nss);
   Real qab;
@@ -286,7 +317,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::updateGss()
 
 // Update slip system resistance, elastic, plastic and total work
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::update_energies()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test::update_energies()
 {
   RankTwoTensor cauchy_stress_undamaged, cauchy_stress, WpToTrace, WpBrokenToTrace, invFe;
   Real detFe;
@@ -343,7 +374,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::update_energies(
 }
 
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::calcResidual( RankTwoTensor &resid )
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test::calcResidual( RankTwoTensor &resid )
 {
   RankTwoTensor iden, ce, invce, ee, ce_pk2, eqv_slip_incr, pk2_new, temporal;
   Real trD, Kb, Je, J_dot, detFe;
@@ -413,17 +444,10 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::calcResidual( Ra
   Je = _fe.det(); // Jacobian = relative volume
   
   //EOS Mie Gruneisen (Menon, 2014), (Zhang, 2011)-----------------------------------------------------
-  Real Peos, Peos_pos, Peos_neg, V0V, eta;
-
+  Real V0V, eta;
+  RankTwoTensor Peos, Peos_pos, Peos_neg;
   V0V = 1.0 / Je; // relative volume
   eta = 1.0 - Je; // eta = 1 - (v / v0) (Menon, 2014)
-
-  Peos = _G_Gruneisen * _density[_qp] * _specific_heat[_qp] * (temp - _reference_temperature) * V0V;
-  Peos += Kb * eta * (1.0 - (_G_Gruneisen / 2.0) * (V0V - 1.0)) / std::pow((1.0 - _s_UsUp * eta) , 2.0);
-  Peos = - Peos; // negative stress in compressio
-  Peos_pos = (std::abs(Peos) + Peos) / 2.0; // volumetric expansion
-  Peos_neg = (std::abs(Peos) - Peos) / 2.0; // volumetric compression
-  _sigma_eos[_qp] =  Peos * iden;
 
   // Thermal eigenstrain (equation (18) in Luscher2017-------------------------------------------------
   // Lagrangian strain E_thermal = 1/2 (F_thermal^T F_thermal - I)
@@ -442,49 +466,43 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::calcResidual( Ra
   // Pcor = correcting pressure = linearized form of the EOS
   // equation (18) in Luscher2017
   delta = 1.5 * (std::pow(Je , 2.0/3.0) - 1.0);
-  if (Je >= 1.0) { // only in expansion
-     pk2_new +=  1.0 * xfac * Kb * std::pow(Je , 2.0/3.0)
-                * (delta  -  thermal_eigenstrain.trace())
-                * invce;
-     _pk2_undamaged[_qp] += 1.0 * Kb * std::pow(Je , 2.0/3.0)
-                            * (delta  -  thermal_eigenstrain.trace())
-                            * invce;
-  } else { 
-  // Pcor = correcting pressure = linearized form of the EOS
-  // equation (18) in Luscher2017
-     pk2_new = Je * Peos * invce;
-     _pk2_undamaged[_qp] = Je * Peos * invce; 
+  //if (Je >= 1.0) { // only in expansion
+  Peos = 1.0 * Kb * std::pow(Je , 2.0/3.0)
+             * (delta  -  thermal_eigenstrain.trace())
+             * invce;
+
+ // volumetric expansion
+  if (Je > 1.0) { 
+  Peos_pos = Peos;
+  } else {
+  Peos_neg = Peos; // volumetric compression
   }
 
+ // positive and negative volumetric stresses (equation 17 in Luscher2017) + damage
+  pk2_new += Peos_pos * xfac + Peos_neg;
+  _pk2_undamaged[_qp] += Peos;
+
   // Deviatoric stress + damage (equation (18) in Luscher2017): C : (Ee - alpha)-----------------------
-  pk2_new += xfac * _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
-
-  // Undamaged second piola-kirchoff stress to calculate undamaged plastic work
-  _pk2_undamaged[_qp] += _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
-
-  //temporal  = _elasticity_tensor[_qp] * (ee - thermal_eigenstrain) ;
-
-  // Pcor = correcting pressure = linearized form of the EOS
-  // equation (18) in Luscher2017
-  pk2_new +=  -1.0 * xfac * Kb * std::pow(Je , 2.0/3.0)
+  pk2_new +=  _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
+  pk2_new +=  -1.0 * Kb * std::pow(Je , 2.0/3.0)
               * (delta  -  thermal_eigenstrain.trace())
               * invce;
 
   // Undamaged second piola-kirchoff stress to calculate undamaged plastic work
+  _pk2_undamaged[_qp] += _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
   _pk2_undamaged[_qp] += -1.0 * Kb * std::pow(Je , 2.0/3.0)
                           * (delta  - thermal_eigenstrain.trace())
                           * invce;
 
-  // _sigma_dev[_qp] = _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
-  _sigma_dev[_qp] =  _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
-  _sigma_dev2[_qp]  =  -1.0 * Kb * std::pow(Je , 2.0/3.0)
+  //Cauchy stress components
+  //Deviatoric stress
+  _sigma_dev[_qp] = _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
+  _sigma_dev[_qp]  +=  -1.0  * Kb * std::pow(Je , 2.0/3.0)
               * (delta  -  thermal_eigenstrain.trace())
               * invce;
-  //_sigma_dev2[_qp]  =  -1.0 * Kb * std::pow(Je , 2.0/3.0)
-  //            * delta * invce;
-  _sigma_dev[_qp] = _fe * _sigma_dev[_qp] * _fe.transpose()/Je; 
-  _sigma_dev2[_qp] = _fe * _sigma_dev2[_qp] * _fe.transpose()/Je; 
-  
+  _sigma_dev[_qp] = _fe * _sigma_dev[_qp] * _fe.transpose()/detFe; 
+  //Volumetric 
+  _sigma_eos[_qp] = _fe * Peos * _fe.transpose()/detFe;
   _W0e_pos[_qp] = 0.0;
   _W0e_neg[_qp] = 0.0;
 
@@ -492,18 +510,11 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::calcResidual( Ra
 
   // In expansion use Hooke's law
 
-  if (Je >= 1.0) { 
+  if (Je > 1.0) { 
     _W0e_pos[_qp] = 1.0/2.0 * Kb * delta * delta - Kb * delta * thermal_expansion_coeff;
   } else {
-
   // In compression use EOS
-
-    _W0e_neg[_qp] = 1.0*(_G_Gruneisen * _density[_qp] * _specific_heat[_qp] * (_reference_temperature-temp) * std::log(1/V0V)
-                  + (Kb*V0V*(2*_s_UsUp-2-_G_Gruneisen))/(2*(_s_UsUp-1)*std::pow(_s_UsUp, 2.0)*(V0V+_s_UsUp*(1-V0V)))
-                  - ((2*_s_UsUp-2-_G_Gruneisen)*Kb)/(2*(_s_UsUp-1)*std::pow(_s_UsUp, 2.0))
-                  + (_G_Gruneisen*(1-2*_s_UsUp)+2*std::pow((_s_UsUp-1), 2.0))/(2*std::pow(_s_UsUp, 2.0)*std::pow((_s_UsUp-1), 2.0))
-                  * std::log((V0V+_s_UsUp*(1-V0V))/(V0V))*Kb
-                  + (Kb*_G_Gruneisen)/(2*std::pow((_s_UsUp-1), 2.0))*std::log(1/V0V));
+    _W0e_neg[_qp] = 1.0/2.0 * Kb * delta * delta - Kb * delta * thermal_expansion_coeff;
   }
 
   // Volumetric-Deviatoric  coupling free energy = Psi_cpl in Luscher2017
@@ -513,15 +524,15 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::calcResidual( Ra
   elastic_energy_tensor = _elasticity_tensor[_qp] * ee;
   elastic_energy_tensor = 0.5 * ee * elastic_energy_tensor;
 
-  _W0e_pos[_qp] += elastic_energy_tensor.trace(); // 1/2 * Ee : C : Ee
+  _W0e_neg[_qp] += elastic_energy_tensor.trace(); // 1/2 * Ee : C : Ee
 
   thermal_coupling_tensor = _elasticity_tensor[_qp] * thermal_eigenstrain; // C : alpha in equation 15 of Luscher2017
   thermal_coupling_tensor = ee * thermal_coupling_tensor;
-  _W0e_pos[_qp] -= thermal_coupling_tensor.trace(); // - Ee : C : alpha in equation 15 of Luscher2017
+  _W0e_neg[_qp] -= thermal_coupling_tensor.trace(); // - Ee : C : alpha in equation 15 of Luscher2017
 
-  _W0e_pos[_qp] -= 0.5 * Kb * delta * delta; // - 1/2 K delta^2 in equation 15 of Luscher2017
+  _W0e_neg[_qp] -= 0.5 * Kb * delta * delta; // - 1/2 K delta^2 in equation 15 of Luscher2017
 
-  _W0e_pos[_qp] += Kb * delta * thermal_eigenstrain.trace(); // + K delta alpha_v in equation 15 of Luscher2017
+  _W0e_neg[_qp] += Kb * delta * thermal_eigenstrain.trace(); // + K delta alpha_v in equation 15 of Luscher2017
 
   // Assign history variable and derivative
   if (_W0e_pos[_qp] > _hist_old[_qp])
@@ -553,9 +564,6 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::calcResidual( Ra
   pk2_new.addIa( _C0 * trD * h_max * h_max * std::abs(trD) * _density[_qp] );
   pk2_new.addIa( _C1 * trD * h_max * _density[_qp]);
   }
-  _sigma_vis[_qp] = _C0 * trD * h_max * h_max * std::abs(trD) * _density[_qp] * iden;
-  _sigma_vis[_qp] += _C1 * trD * h_max * _density[_qp] * iden;
-  _sigma_vis[_qp] = _fe * _sigma_vis[_qp] * _fe.transpose()/Je;
   //Calculate stress term due to pressure dependence
   //Volumetric strain
   Eev = 1.0/V0V - 1.0;
@@ -572,7 +580,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::calcResidual( Ra
 
 // Calculate slip increment,dslipdtau. Override to modify.
 void
-FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::getSlipIncrements()
+FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test::getSlipIncrements()
 {
  // Real Je;
  // Je = _deformation_gradient[_qp].det();
