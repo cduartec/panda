@@ -149,6 +149,7 @@ protected:
   MaterialProperty<RankTwoTensor> & _sigma_dev; // Elastic deformation gradient for output
   MaterialProperty<RankTwoTensor> & _sigma_dev2; // Elastic deformation gradient for output
   MaterialProperty<RankTwoTensor> & _sigma_vis; // Elastic deformation gradient for output
+  MaterialProperty<Real> & _J;
   MaterialProperty<std::vector<Real>> & _slip_incr_out; // slip increment output
   MaterialProperty<std::vector<Real>> & _tau_out; // slip increment output
 

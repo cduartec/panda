@@ -114,46 +114,46 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test::initQpStatefu
 
   _hist[_qp] = 0.0; // history variable = (never decreasing) positive elastic energy
   //Crack 1
-  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 936.)
-  {
-    if(std::abs(_q_point[_qp](0)-215.) < (0.5*_l[_qp]))
-    {
-       _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-215.)/(0.5*_l[_qp]));
-     }
-  }
+//  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 936.)
+//  {
+//    if(std::abs(_q_point[_qp](0)-215.) < (0.5*_l[_qp]))
+//    {
+//       _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-215.)/(0.5*_l[_qp]));
+//     }
+//  }
   //Crack 2
-  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 980.)
-  {
-    if(std::abs(_q_point[_qp](0)-55.) < (0.5*_l[_qp]))
-    {
-      _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-55.)/(0.5*_l[_qp]));
-    }
-  }
+//  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 980.)
+//  {
+//    if(std::abs(_q_point[_qp](0)-55.) < (0.5*_l[_qp]))
+//    {
+//      _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-55.)/(0.5*_l[_qp]));
+//    }
+//  }
   //Crack 3
-  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 908.)
-  {
-    if(std::abs(_q_point[_qp](0)-137.) < (0.5*_l[_qp]))
-    {
-      _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-137.)/(0.5*_l[_qp]));
-     }
-  }
+//  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 908.)
+//  {
+//    if(std::abs(_q_point[_qp](0)-137.) < (0.5*_l[_qp]))
+//    {
+ //     _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-137.)/(0.5*_l[_qp]));
+//     }
+//  }
   //Crack 4
-  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 850.)
-  {
-    if(std::abs(_q_point[_qp](0)-370.) < (0.5*_l[_qp]))
-    {
-       _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-370.)/(0.5*_l[_qp]));
-     }
-  }
+//  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 850.)
+//  {
+//    if(std::abs(_q_point[_qp](0)-370.) < (0.5*_l[_qp]))
+//    {
+//       _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-370.)/(0.5*_l[_qp]));
+//     }
+//  }
   //Crack 5
-  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 970.)
-  {
-    if(std::abs(_q_point[_qp](0)-470.) < (0.5*_l[_qp]))
-    {
-       _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-470.)/(0.5*_l[_qp]));
-     }
-  }
-  
+//  if (_q_point[_qp](1) <= 1000. && _q_point[_qp](1) > 970.)
+//  {
+ //   if(std::abs(_q_point[_qp](0)-470.) < (0.5*_l[_qp]))
+ //   {
+//       _hist[_qp] = 1.0e4*(_gc[_qp]/4.0/(0.5*_l[_qp]))*(1-std::abs(_q_point[_qp](0)-470.)/(0.5*_l[_qp]));
+//     }
+//  }
+//  
   initSlipSysProps(); // Initializes slip system related properties
   initAdditionalProps();
 }
