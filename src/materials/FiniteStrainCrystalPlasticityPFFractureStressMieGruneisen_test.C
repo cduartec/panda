@@ -88,6 +88,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::FiniteStrainCrys
     _sigma_dev(declareProperty<RankTwoTensor>("sigma_dev")), // Cauchy stress dev
     _sigma_dev2(declareProperty<RankTwoTensor>("sigma_dev2")), // Cauchy stress dev
     _sigma_vis(declareProperty<RankTwoTensor>("sigma_vis")), // Cauchy stress dev
+    _J(declareProperty<Real>("J")),
     _slip_incr_out(declareProperty<std::vector<Real>>("slip_incr_out")), // slip system strain increment for output
     _tau_out(declareProperty<std::vector<Real>>("tau_out")), // slip system strain increment for output
     _p(coupledValue("p")),
@@ -360,10 +361,13 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::calcResidual( Ra
   // Kb = (1/9) I : C : I
   //Real Kb = 0.0;
 
-  for (unsigned int i = 0; i < LIBMESH_DIM; ++i)
-    for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
-      Kb +=  _elasticity_tensor[_qp](i, i, j, j);
-  Kb = (1.0 / 9.0) * Kb;
+ // for (unsigned int i = 0; i < LIBMESH_DIM; ++i)
+ //   for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
+ //     Kb +=  _elasticity_tensor[_qp](i, i, j, j);
+ // Kb = (1.0 / 9.0) * Kb;
+
+ // or reference bulk modulus can be an input
+   Kb = _Bulk_Modulus_Ref;
 
   // Thermal expansion coefficient depends on Gruneisen parameter, bulk modulus and sound speed
   thermal_expansion_coeff = _G_Gruneisen * _density[_qp] * _specific_heat[_qp] / Kb;
@@ -411,6 +415,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen_test::calcResidual( Ra
   invce = ce.inverse();
   ee = 0.5 * ( ce - iden );
   Je = _fe.det(); // Jacobian = relative volume
+  _J[_qp] = Je;;
   
   //EOS Mie Gruneisen (Menon, 2014), (Zhang, 2011)-----------------------------------------------------
   Real Peos, Peos_pos, Peos_neg, V0V, eta;

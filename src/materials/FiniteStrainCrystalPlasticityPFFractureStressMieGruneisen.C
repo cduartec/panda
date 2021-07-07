@@ -487,7 +487,7 @@ FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen::calcResidual( RankTwo
   // In expansion use Hooke's law
 
   if (Je >= 1.0) { 
-    _W0e_pos[_qp] = 1.0/2.0 * Kb * delta * delta - Kb * delta * thermal_expansion_coeff;
+    _W0e_pos[_qp] = 1.0/2.0 * Kb * delta * delta - Kb * delta * thermal_eigenstrain.trace();
   } else {
 
   // In compression use EOS
