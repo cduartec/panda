@@ -4,13 +4,13 @@
 /*          All contents are licensed under LGPL V2.1           */
 /*             See LICENSE for full restrictions                */
 /****************************************************************/
-#ifndef FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENVOL_TEST_H
-#define FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENVOL_TEST_H
+#ifndef FINITESTRAINCPPFFRACTUREMIEGRUNEISENCONSTH_H
+#define FINITESTRAINCPPFFRACTUREMIEGRUNEISENCONSTH_H
 
 #include "FiniteStrainCrystalPlasticity.h"
 
 /**
- * FiniteStrainCrystalPlasticityPFFractureStressMieGruneisen uses the multiplicative decomposition of deformation gradient
+ * FiniteStrainCPPFFractureMieGruneisenConstH uses the multiplicative decomposition of deformation gradient
  * and solves the PK2 stress residual equation at the intermediate configuration to evolve the material state.
  * The internal variables are updated using an interative predictor-corrector algorithm.
  * Backward Euler integration rule is used for the rate equations.
@@ -21,15 +21,15 @@
  * Computes the stress and free energy derivatives for the phase field
  * Allen-Cahn formalism
  */
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test;
+class FiniteStrainCPPFFractureMieGruneisenConstH;
 
 template<>
-InputParameters validParams<FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test>();
+InputParameters validParams<FiniteStrainCPPFFractureMieGruneisenConstH>();
 
-class FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test : public FiniteStrainCrystalPlasticity
+class FiniteStrainCPPFFractureMieGruneisenConstH : public FiniteStrainCrystalPlasticity
 {
 public:
-  FiniteStrainCrystalPlasticityPFFractureStressMieGruneisenVol_test(const InputParameters & parameters);
+  FiniteStrainCPPFFractureMieGruneisenConstH(const InputParameters & parameters);
 
 protected:
   /// Function required to initialize statefull material properties
@@ -71,9 +71,6 @@ protected:
   // temperature
   const VariableValue & _temp;
 
-  // Maximum element size
-  const VariableValue & _h_max;
-
   /// Small number to avoid non-positive definiteness at or near complete damage
   const Real _kdamage;
 
@@ -89,25 +86,28 @@ protected:
   // reference bulk modulus
   const Real _Bulk_Modulus_Ref;
 
-  // KT0 prime correction to the bulk modulus (Menikoff 2001)
-  //const Real _Bulk_Modulus_Cor;
-
   // Von Neumann coefficient
   const Real _C0;
 
   // Landshoff coefficient
   const Real _C1;
 
-  // volumetric thermal exapnsion coeffcient, as in Austin Barton 2015
-  //const Real _thermal_expansion;
+  // Average element size
+  const Real _h_e;
+
+  // Speed of sound
+  const Real _c_l;
 
   // reference temperature, as in Luscher2017
   const Real _reference_temperature;
 
   // prefactor of the plastic contribution to damage
   const Real _plastic_factor;
-
+  
+  //Specific heat
   const MaterialProperty<Real> & _specific_heat;
+  
+  //Density
   const MaterialProperty<Real> & _density;
 
   /// Material property defining crack width, declared elsewhere
@@ -133,10 +133,6 @@ protected:
   MaterialProperty<RankTwoTensor> & _dstress_dc;
   MaterialProperty<RankTwoTensor> & _d2Fdcdstrain;
 
-  //MaterialProperty<RankTwoTensor> & _dW0e_dstrain;
-  //MaterialProperty<RankTwoTensor> & _dW0p_dstrain;
-  //MaterialProperty<RankTwoTensor> & _dW0p_broken_dstrain;
-
   /// History variable that prevents crack healing, declared in this material
   MaterialProperty<Real> & _hist;
 
@@ -145,20 +141,12 @@ protected:
 
   MaterialProperty<RankTwoTensor> & _pk2_undamaged;
   MaterialProperty<RankTwoTensor> & _fe_out; // Elastic deformation gradient for output
-  MaterialProperty<RankTwoTensor> & _sigma_eos; // Elastic deformation gradient for output
-  MaterialProperty<RankTwoTensor> & _sigma_dev; // Elastic deformation gradient for output
   MaterialProperty<std::vector<Real>> & _slip_incr_out; // slip increment output
   MaterialProperty<std::vector<Real>> & _tau_out; // slip increment output
 
   /// Pressure  variable.
   const VariableValue & _p;
   VariableName _p_name;
-
-  /// Variation of elasticity tensor  with pressure
-  const MaterialProperty<RankFourTensor> & _delasticity_tensor_dp;
-  MaterialProperty<Real> &  _p_ev;
-  /// Rotation matrix
-  MaterialProperty<RankTwoTensor> & _rot;
 
   Real _W0p_tmp;
   Real _W0p_tmp_old;
@@ -167,4 +155,4 @@ protected:
 
 };
 
-#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENVOL_H
+#endif //FINITESTRAINCRYSTALPLASTICITYPFFRACTURESTRESSMIEGRUNEISENCONST_H
