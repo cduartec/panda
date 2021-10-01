@@ -82,7 +82,10 @@ FiniteStrainCPPFFractureMieGruneisenConstH::FiniteStrainCPPFFractureMieGruneisen
     _slip_incr_out(declareProperty<std::vector<Real>>("slip_incr_out")), // slip system strain increment for output
     _tau_out(declareProperty<std::vector<Real>>("tau_out")), // slip system strain increment for output
     _p(coupledValue("p")),
-    _p_name(getVar("p", 0)->name())
+    _p_name(getVar("p", 0)->name()),
+    _heat_rate_vis(declareProperty<Real>("heat_rate_vis")), //Heat rate due to plastic dissipation
+    _heat_rate_therm(declareProperty<Real>("heat_rate_therm")), // Heat rate due to thermo-elastic coupling
+    _heat_rate_p(declareProperty<Real>("heat_rate_p")) // Heat rate due to plasticity
 {
     _err_tol = false;
 }
@@ -490,6 +493,36 @@ FiniteStrainCPPFFractureMieGruneisenConstH::calcResidual( RankTwoTensor &resid )
   pk2_new.addIa( _C0 * trD * _h_e * _h_e * std::abs(trD) * _density[_qp] );
   pk2_new.addIa( _C1 * trD * _h_e * _density[_qp] * _c_l);
   }
+
+  // Calculate heat rates-----------------------------------------------------------
+  // Heat rate due to shock dissipation
+  ce_old = fe_old.transpose() * fe_old; // Ce old = Cauchy tensor at previous time step
+  ee_old = 0.5 * (ce_old - iden);
+  ee_rate = (ee - ee_old) / _dt;
+  invce_ee_rate = invce * ee_rate;
+
+  if (J_dot < 0.0) {
+  _heat_rate_vis[_qp]  = _C0 * trD * std::abs(trD) * _density[_qp] * _h_e * _h_e ;
+  _heat_rate_vis[_qp] += _C1 * trD * _density[_qp] * _h_e;
+  _heat_rate_vis[_qp] *= invce_ee_rate.trace();
+  }
+
+  //Heat rate due to thermo-elastic coupling
+  //heat source = - G_Gruneisen * rho_0 * C_v * T * Tr(Ce^-1 dot(Ee))
+   _heat_rate_therm[_qp] = - _G_Gruneisen * _density[_qp] * _specific_heat[_qp] * temp
+                           * invce_ee_rate.trace();
+   if (Je > 1.0) {
+   _heat_rate_therm[_qp] = _heat_rate_therm[_qp] * (1.0 - _c[_qp]) * (1.0 - _c[_qp]);}
+
+  //From Psi_cpl
+   _heat_rate_therm[_qp] += thermal_expansion_coeff * temp
+              * std::exp((2.0/3.0) * thermal_expansion_coeff * (temp - _reference_temperature))
+              * (Kb * std::pow(Je , 2.0/3.0) * invce_ee_rate.trace() - (1.0/3.0) * thermal_coupling_tensor.trace())
+              * (1.0 - _c[_qp]) * (1.0 - _c[_qp]);
+
+  // Heat rate due to plasticity
+  _heat_rate_p[_qp] = 0.5 * (1.0 - _c[_qp]) * (1.0 - _c[_qp])
+                    * ( _W0p[_qp] - _W0p_old[_qp] ) / _dt; 
 
   resid = _pk2_tmp - pk2_new;
 }

@@ -148,6 +148,11 @@ protected:
   const VariableValue & _p;
   VariableName _p_name;
 
+  /// Heat rates
+  MaterialProperty<Real> &  _heat_rate_vis; //Heat rate due to shock dissipation
+  MaterialProperty<Real> &  _heat_rate_therm; //Heat due to thermo-elastic coupling
+  MaterialProperty<Real> &  _heat_rate_p; //Heat due to plasticity
+
   Real _W0p_tmp;
   Real _W0p_tmp_old;
   Real _W0p_broken_tmp;
