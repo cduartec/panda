@@ -113,6 +113,7 @@ FiniteStrainCPPFFractureMieGruneisenConstH::initQpStatefulProperties()
   _heat_rate_therm[_qp] = 0.0;
   _heat_rate_p[_qp] = 0.0;
 
+  _Tr_E_dot[_qp] = 0.0;
   
   initSlipSysProps(); // Initializes slip system related properties
   initAdditionalProps();
@@ -329,7 +330,7 @@ void
 FiniteStrainCPPFFractureMieGruneisenConstH::calcResidual( RankTwoTensor &resid )
 {
   RankTwoTensor iden, ce, invce, ee, ce_pk2, eqv_slip_incr, pk2_new, temporal;
-  RankTwoTensor ce_old, fe_old, ee_old, ee_rate, invce_ee_rate;
+  RankTwoTensor ce_old, fe_old, ee_old, ee_rate, invce_ee_rate, inv_fp_old;
   Real trD, Kb, Je, detFe;
   Real c = _c[_qp];
   Real temp = _temp[_qp];
@@ -503,6 +504,8 @@ FiniteStrainCPPFFractureMieGruneisenConstH::calcResidual( RankTwoTensor &resid )
 
   // Calculate heat rates-----------------------------------------------------------
   // Heat rate due to shock dissipation
+  inv_fp_old = _fp_old[_qp].inverse();
+  fe_old = _deformation_gradient_old[_qp] * inv_fp_old;
   ce_old = fe_old.transpose() * fe_old; // Ce old = Cauchy tensor at previous time step
   ee_old = 0.5 * (ce_old - iden);
   ee_rate = (ee - ee_old) / _dt;
@@ -529,9 +532,9 @@ FiniteStrainCPPFFractureMieGruneisenConstH::calcResidual( RankTwoTensor &resid )
   _heat_rate_therm[_qp] *= -1.0;
   // Heat rate due to plasticity
   _heat_rate_p[_qp] = 0.5 * (1.0 - _c[_qp]) * (1.0 - _c[_qp])
-                    * ( _W0p_tmp - _W0p_tmp ) / _dt; 
+                    * ( _W0p_tmp - _W0p_tmp_old ) / _dt; 
   // Lagrangian strain rate trace
-  _Tr_E_dot[_qp] = invce_ee_rate.trace();
+  _Tr_E_dot[_qp] = ee_rate.trace();
 
   resid = _pk2_tmp - pk2_new;
 }
