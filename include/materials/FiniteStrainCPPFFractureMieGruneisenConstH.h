@@ -152,6 +152,9 @@ protected:
   MaterialProperty<Real> &  _heat_rate_vis; //Heat rate due to shock dissipation
   MaterialProperty<Real> &  _heat_rate_therm; //Heat due to thermo-elastic coupling
   MaterialProperty<Real> &  _heat_rate_p; //Heat due to plasticity
+ 
+  /// Lagrangian strain rate
+  MaterialProperty<Real> &  _Tr_E_dot; //Tr(C^{-1}_e\dot{E}_e)
 
   Real _W0p_tmp;
   Real _W0p_tmp_old;
