@@ -150,7 +150,8 @@ protected:
 
   /// Heat rates
   MaterialProperty<Real> &  _heat_rate_vis; //Heat rate due to shock dissipation
-  MaterialProperty<Real> &  _heat_rate_therm; //Heat due to thermo-elastic coupling
+  MaterialProperty<Real> &  _heat_rate_therm1; //Heat due to thermo-elastic coupling volumetric
+  MaterialProperty<Real> &  _heat_rate_therm2; //Heat due to thermo-elastic coupling coupled
   MaterialProperty<Real> &  _heat_rate_p; //Heat due to plasticity
  
   /// Lagrangian strain rate

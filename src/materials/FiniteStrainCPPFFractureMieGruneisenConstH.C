@@ -84,7 +84,8 @@ FiniteStrainCPPFFractureMieGruneisenConstH::FiniteStrainCPPFFractureMieGruneisen
     _p(coupledValue("p")),
     _p_name(getVar("p", 0)->name()),
     _heat_rate_vis(declareProperty<Real>("heat_rate_vis")), //Heat rate due to plastic dissipation
-    _heat_rate_therm(declareProperty<Real>("heat_rate_therm")), // Heat rate due to thermo-elastic coupling
+    _heat_rate_therm1(declareProperty<Real>("heat_rate_therm1")), // Heat rate due to thermo-elastic coupling
+    _heat_rate_therm2(declareProperty<Real>("heat_rate_therm2")), // Heat rate due to thermo-elastic coupling
     _heat_rate_p(declareProperty<Real>("heat_rate_p")), // Heat rate due to plasticity
     _Tr_E_dot(declareProperty<Real>("Tr_E_dot")) // Trace Lagrangian strain rate
 {
@@ -110,7 +111,8 @@ FiniteStrainCPPFFractureMieGruneisenConstH::initQpStatefulProperties()
   
   //Heat sources
   _heat_rate_vis[_qp] = 0.0;
-  _heat_rate_therm[_qp] = 0.0;
+  _heat_rate_therm1[_qp] = 0.0;
+  _heat_rate_therm2[_qp] = 0.0;
   _heat_rate_p[_qp] = 0.0;
 
   _Tr_E_dot[_qp] = 0.0;
@@ -515,21 +517,21 @@ FiniteStrainCPPFFractureMieGruneisenConstH::calcResidual( RankTwoTensor &resid )
   _heat_rate_vis[_qp]  = _C0 * trD * std::abs(trD) * _density[_qp] * _h_e * _h_e ;
   _heat_rate_vis[_qp] += _C1 * trD * _density[_qp] * _h_e;
   _heat_rate_vis[_qp] *= invce_ee_rate.trace();
-  _heat_rate_vis[_qp] *= -1.0;
   }
 
   //Heat rate due to thermo-elastic coupling
   //heat source = - G_Gruneisen * rho_0 * C_v * T * Tr(Ce^-1 dot(Ee))
-   _heat_rate_therm[_qp] = - _G_Gruneisen * _density[_qp] * _specific_heat[_qp] * temp
+   _heat_rate_therm1[_qp] = - _G_Gruneisen * _density[_qp] * _specific_heat[_qp] * temp
                            * invce_ee_rate.trace() * (1.0 - _c[_qp]) * (1.0 - _c[_qp]);
   //From Psi_cpl
-   _heat_rate_therm[_qp] += thermal_expansion_coeff * temp
+   _heat_rate_therm2[_qp] = thermal_expansion_coeff * temp
               * std::exp((2.0/3.0) * thermal_expansion_coeff * (temp - _reference_temperature))
               * (Kb * std::pow(Je , 2.0/3.0) * invce_ee_rate.trace() - (1.0/3.0) * thermal_coupling_tensor.trace())
               * (1.0 - _c[_qp]) * (1.0 - _c[_qp]);
   
   // Change to positive sign
-  _heat_rate_therm[_qp] *= -1.0;
+  _heat_rate_therm1[_qp] *= -1.0;
+  _heat_rate_therm2[_qp] *= -1.0;
   // Heat rate due to plasticity
   _heat_rate_p[_qp] = 0.5 * (1.0 - _c[_qp]) * (1.0 - _c[_qp])
                     * ( _W0p_tmp - _W0p_tmp_old ) / _dt; 
