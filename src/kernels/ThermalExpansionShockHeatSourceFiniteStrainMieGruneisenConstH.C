@@ -104,7 +104,7 @@ ThermalExpansionShockHeatSourceFiniteStrainMieGruneisenConstH::computeQpResidual
   // Maheo et al. Mechanics Research Communications 38 (2011) 81 88
   Real J_dot;
   J_dot = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
-  if (Je < 1.0){
+  if (J_dot < 0.0){
   Real viscous_energy, trD;
   // Real trD;
   trD = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
