@@ -505,10 +505,10 @@ FiniteStrainCPPFFractureConstH::calcResidual( RankTwoTensor &resid )
   Real J_dot;
   J_dot = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
   //Add only in compression
-  if (Je < 1.0){
+  //if (Je < 1.0){
   pk2_new.addIa( _C0 * trD * _h_e * _h_e * std::abs(trD) * _density[_qp] );
   pk2_new.addIa( _C1 * trD * _h_e * _density[_qp] * _c_l);
-  }
+  //}
 
   // Calculate heat rates-----------------------------------------------------------
   // Heat rate due to shock dissipation
