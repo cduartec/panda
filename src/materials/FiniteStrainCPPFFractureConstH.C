@@ -333,6 +333,7 @@ FiniteStrainCPPFFractureConstH::calcResidual( RankTwoTensor &resid )
 {
   RankTwoTensor iden, ce, invce, ee, ce_pk2, eqv_slip_incr, pk2_new, temporal;
   RankTwoTensor ce_old, fe_old, ee_old, ee_rate, invce_ee_rate, inv_fp_old;
+  RankTwoTensor thermal_eigenstrain, pk2_new_vol;
   Real trD, Kb, Je, detFe;
   Real c = _c[_qp];
   Real temp = _temp[_qp];
@@ -393,53 +394,21 @@ FiniteStrainCPPFFractureConstH::calcResidual( RankTwoTensor &resid )
   ee = 0.5 * ( ce - iden );
   Je = _fe.det(); // Jacobian = relative volume
   
-  //EOS Mie Gruneisen (Menon, 2014), (Zhang, 2011)-----------------------------------------------------
-  //Real Peos, Peos_pos, Peos_neg, V0V, eta;
-
-  //V0V = 1.0 / Je; // relative volume v_0/v
-  //eta = 1.0 - Je; // eta = 1 - (v / v0) (Menon, 2014)
-
-  //Peos = _G_Gruneisen * _density[_qp] * _specific_heat[_qp] * (temp - _reference_temperature) * V0V;
-  //Peos += Kb * eta * (1.0 - (_G_Gruneisen / 2.0) * (V0V - 1.0)) / std::pow((1.0 - _s_UsUp * eta) , 2.0);
-  //Peos = - Peos; // negative stress in compression
-  //Peos_pos = (std::abs(Peos) + Peos) / 2.0; // volumetric expansion
-  //Peos_neg = (std::abs(Peos) - Peos) / 2.0; // volumetric compression
-
   // Thermal eigenstrain (equation (18) in Luscher2017-------------------------------------------------
   // Lagrangian strain E_thermal = 1/2 (F_thermal^T F_thermal - I)
   // finite strain formula (Lubarda2002): F_thermal = exp((alpha/3)*(T-T_ref)) I
-
-  RankTwoTensor thermal_eigenstrain, pk2_new_vol;
   thermal_eigenstrain = (1.0 / 2.0)
                       * (std::exp((2.0/3.0) * thermal_expansion_coeff * (temp - _reference_temperature)) - 1.0)
                       * iden;
 
-
+  //Second Piola-Kirchoff stress----------------------------------------------------------------------
   //Volumetric stress + damage-------------------------------------------------------------------------
-  // Pcor = correcting pressure = linearized form of the EOS
-  // equation (18) in Luscher2017
-  
+  //Formula (Luscher2017):  K*J^(2/3)*(delta - alpha_v)*C^{-1}_e 
   Real delta;
   delta = 1.5 * (std::pow(Je , 2.0/3.0) - 1.0);
-  //if (Je >= 1.0) { // In expansion use Linear Elasticity to calculate volumetric part of the PK-2 stress
-  //   pk2_new +=  1.0 * xfac * Kb * std::pow(Je , 2.0/3.0)
-  //              * (delta  -  thermal_eigenstrain.trace())
-  //              * invce;
-  //   _pk2_undamaged[_qp] += 1.0 * Kb * std::pow(Je , 2.0/3.0)
-  //                          * (delta  -  thermal_eigenstrain.trace())
-  //                          * invce;
-  //} else {//In compression use EOS to calculate volumetric part of PK-2 stress
-  //   pk2_new = Je * Peos * invce;
-  //   _pk2_undamaged[_qp] = Je * Peos * invce; 
-  //}
-
-  // Deviatoric stress + damage (equation (18) in Luscher2017): C : (Ee - alpha)-----------------------
-  
-  //Total stress
-  //Volumetric part 
-  pk2_new_vol = 1.0 * Kb * std::pow(Je , 2.0/3.0)
-                * (delta  -  thermal_eigenstrain.trace())
-                * invce;
+  pk2_new_vol = Kb * std::pow(Je , 2.0/3.0)
+                   * (delta  -  thermal_eigenstrain.trace())
+                   * invce;
   if (Je > 1.0){
   pk2_new = xfac * pk2_new_vol;
   } else {
@@ -447,7 +416,8 @@ FiniteStrainCPPFFractureConstH::calcResidual( RankTwoTensor &resid )
   }
   _pk2_undamaged[_qp] = pk2_new_vol;
   
- // Deviatoric stress + damage (equation (18) in Luscher2017): C : (Ee - alpha)-----------------------
+ // Deviatoric stress + damage (equation (18) in Luscher2017): 
+ // Formula (Eq. (18) in Luscher2017) : C_ijkl * (E_e - alpha)-K*J^(2/3)*(delta - alpha_v)*C^{-1}_e
   pk2_new += xfac * _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
   _pk2_undamaged[_qp] += _elasticity_tensor[_qp] * (ee - thermal_eigenstrain);
   pk2_new +=  -1.0 * xfac * Kb * std::pow(Je , 2.0/3.0)
@@ -456,25 +426,44 @@ FiniteStrainCPPFFractureConstH::calcResidual( RankTwoTensor &resid )
   _pk2_undamaged[_qp] += -1.0 * Kb * std::pow(Je , 2.0/3.0)
                           * (delta  - thermal_eigenstrain.trace())
                           * invce;
+  
+  // Calculate bulk viscosity damping-----------------------------------------------------------
+  // C0 * dot(J) / J * |dot(J) / J| + C1 * dot(J) / J
+  // C0 should be chosen of the order of rho * Le^2, rho = density, Le = element size
+  // C1 should be chosen of the order of rho * Le * cs, cs = sound speed
+  // Maheo et al. Mechanics Research Communications 38 (2011) 81 88
+  trD = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
+  trD /= _deformation_gradient_old[_qp].det();
+  Real J_dot;
+  J_dot = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
+  if (Je <  1.0){
+  pk2_new.addIa( _C0 * trD * _h_e * _h_e * std::abs(trD) * _density[_qp] );
+  pk2_new.addIa( _C1 * trD * _h_e * _density[_qp] * _c_l);
+  }
+  //_pk2_undamaged.addIa( _C0 * trD * _h_e * _h_e * std::abs(trD) * _density[_qp] );
+ // _pk2_undamaged.addIa( _C1 * trD * _h_e * _density[_qp] * _c_l);
+   
 
+  // Free energy calculation ---------------------------------------------------------------------
+  // Energy that contributes to damage \Psi^{+}
   _W0e_pos[_qp] = 0.0;
+
+  // Energy that DOES NOT contribute to damaga \Psi^{-} 
   _W0e_neg[_qp] = 0.0;
 
   // Volumetric free energy = Psi_EOS in Luscher2017------------------------------------------------
 
-  if (Je >= 1.0) {// In expansion use Linear Elasticity
+  if (Je >= 1.0) {// In expansion 
      _W0e_pos[_qp] = 1.0/2.0 * Kb * delta * delta - Kb * delta * thermal_eigenstrain.trace();
-  } else {// In compression use Linear elasticity
+  } else {// In compression 
     _W0e_neg[_qp] = 1.0/2.0 * Kb * delta * delta - Kb * delta * thermal_eigenstrain.trace();
   }
 
-  // Volumetric-Deviatoric  coupling free energy = Psi_cpl in Luscher2017
-  
+  // Volumetric-Deviatoric (coupled) free energy or Psi_cpl (Luscher2017)
   RankTwoTensor elastic_energy_tensor, thermal_coupling_tensor;
-
   elastic_energy_tensor = _elasticity_tensor[_qp] * ee;
   elastic_energy_tensor = 0.5 * ee * elastic_energy_tensor;
-  thermal_coupling_tensor = _elasticity_tensor[_qp] * thermal_eigenstrain; // C : alpha in equation 15 of Luscher2017
+  thermal_coupling_tensor = _elasticity_tensor[_qp] * thermal_eigenstrain; 
   thermal_coupling_tensor = ee * thermal_coupling_tensor;
 
   _W0e_pos[_qp] += elastic_energy_tensor.trace(); // 1/2 * Ee : C : Ee
@@ -495,20 +484,6 @@ FiniteStrainCPPFFractureConstH::calcResidual( RankTwoTensor &resid )
   else
     _dstress_dc[_qp].zero();
 
-  // Calculate bulk viscosity damping-----------------------------------------------------------
-  // C0 * dot(J) / J * |dot(J) / J| + C1 * dot(J) / J
-  // C0 should be chosen of the order of rho * Le^2, rho = density, Le = element size
-  // C1 should be chosen of the order of rho * Le * cs, cs = sound speed
-  // Maheo et al. Mechanics Research Communications 38 (2011) 81 88
-  trD = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
-  trD /= _deformation_gradient_old[_qp].det();
-  Real J_dot;
-  J_dot = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
-  //Add only in compression
-  //if (Je < 1.0){
-  pk2_new.addIa( _C0 * trD * _h_e * _h_e * std::abs(trD) * _density[_qp] );
-  pk2_new.addIa( _C1 * trD * _h_e * _density[_qp] * _c_l);
-  //}
 
   // Calculate heat rates-----------------------------------------------------------
   // Heat rate due to shock dissipation
@@ -519,11 +494,9 @@ FiniteStrainCPPFFractureConstH::calcResidual( RankTwoTensor &resid )
   ee_rate = (ee - ee_old) / _dt;
   invce_ee_rate = invce * ee_rate;
 
-  if (Je < 1.0) {
   _heat_rate_vis[_qp]  = _C0 * trD * std::abs(trD) * _density[_qp] * _h_e * _h_e ;
   _heat_rate_vis[_qp] += _C1 * trD * _density[_qp] * _h_e;
-  _heat_rate_vis[_qp] *= invce_ee_rate.trace();
-  }
+  _heat_rate_vis[_qp] *= ee_rate.trace();
 
   //Heat rate due to thermo-elastic coupling
   //heat source = - G_Gruneisen * rho_0 * C_v * T * Tr(Ce^-1 dot(Ee))

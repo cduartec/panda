@@ -104,14 +104,16 @@ ThermalExpansionShockHeatSourceFiniteStrainMieGruneisenConstH::computeQpResidual
   // Maheo et al. Mechanics Research Communications 38 (2011) 81 88
   Real J_dot;
   J_dot = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
-  if (J_dot < 0.0){
+  if (Je < 1.0){
   Real viscous_energy, trD;
+  RankTwoTensor pk2_vis, pk2_vis_E_dot;
   // Real trD;
   trD = ( _deformation_gradient[_qp].det() - _deformation_gradient_old[_qp].det() ) / _dt;
   trD /= _deformation_gradient_old[_qp].det();
-  viscous_energy  = _beta_v * _C0 * trD * std::abs(trD) * _density[_qp] * _h_e * _h_e ;
-  viscous_energy += _beta_v * _C1 * trD * _density[_qp] *  _h_e * _c_l;
-  viscous_energy *= invce_ee_rate.trace();
+  pk2_vis.addIa( _C0 * trD * _h_e * _h_e * std::abs(trD) * _density[_qp] );
+  pk2_vis.addIa( _C1 * trD * _h_e * _density[_qp] * _c_l);
+  pk2_vis_E_dot = ee_rate * pk2_vis;
+  viscous_energy  = _beta_v * pk2_vis_E_dot.trace() ;
   heat_source += abs(viscous_energy); 
   }
   // Coupling contribution (Psi_cpl in Luscher2017, equation 15)
